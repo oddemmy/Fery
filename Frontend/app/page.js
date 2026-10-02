@@ -12,7 +12,7 @@ const STEPS = [
   {
     n: "02",
     title: "Get a short one",
-    body: "Ferry generates a unique 6-character code instantly.",
+    body: "Fery generates a unique 6-character code instantly.",
   },
   {
     n: "03",
@@ -72,7 +72,7 @@ export default function Home() {
       <header className="border-b border-line">
         <div className="max-w-[720px] mx-auto px-6 py-5 flex items-center justify-between">
           <span className="font-sans font-black text-2xl tracking-tight">
-            FERRY
+            FERY
           </span>
           <span className="font-mono text-xs text-muted hidden sm:block">
             links, shortened
@@ -88,7 +88,7 @@ export default function Home() {
             Make it <span className="text-accent">short</span>.
           </h1>
           <p className="text-muted text-lg mb-10 max-w-[48ch]">
-            Paste a long URL. Ferry gives you back a compact link that
+            Paste a long URL. Fery gives you back a compact link that
             redirects straight to it, and tracks how many times it's been
             opened.
           </p>
@@ -144,7 +144,7 @@ export default function Home() {
       <footer className="border-t border-line">
         <div className="max-w-[720px] mx-auto px-6 py-12">
           <span className="font-sans font-black text-xl tracking-tight">
-            FERRY
+            FERY
           </span>
           <p className="mt-3 text-sm text-muted max-w-[32ch]">
             A small, fast way to turn a long link into a short one.
@@ -153,7 +153,7 @@ export default function Home() {
 
         <div className="border-t border-line">
           <div className="max-w-[720px] mx-auto px-6 py-5 text-xs text-muted">
-            © {new Date().getFullYear()} Ferry. A portfolio project, built
+            © {new Date().getFullYear()} Fery. A portfolio project, built
             for learning.
           </div>
         </div>

@@ -1,8 +1,8 @@
-# Ferry
+# Fery
 
 A RESTful API for shortening long URLs, built with Node.js, Express, and PostgreSQL (hosted on Supabase). Supports creating, retrieving, updating, and deleting short URLs, plus tracking how many times each one has been accessed.
 
-A companion Next.js + Tailwind frontend (also called Ferry) provides a form for creating short links and handles redirecting visitors from a short link to its original URL, as the project spec intends.
+A companion Next.js + Tailwind frontend (also called Fery) provides a form for creating short links and handles redirecting visitors from a short link to its original URL, as the project spec intends.
 
 Built as a portfolio project based on [roadmap.sh's URL Shortening Service project](https://roadmap.sh/projects/url-shortening-service).
 

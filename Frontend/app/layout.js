@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Ferry",
-  description: "Ferry — turn a long link into a short one.",
+  title: "Fery",
+  description: "Fery — turn a long link into a short one.",
 };
 
 export default function RootLayout({ children }) {
