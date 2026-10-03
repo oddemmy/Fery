@@ -20,8 +20,8 @@ A companion Next.js + Tailwind frontend (also called Fery) provides the shorteni
 
 ## Live demo
 
-- Frontend: `https://tryfery.vercel.app` *(update if you've renamed it)*
-- API: `https://ferry-5atd.onrender.com` *(update if you've renamed it; free-tier instance, first request after inactivity may take a few seconds to wake up)*
+- Frontend: `https://tryfery.vercel.app`
+- API: `https://ferry-5atd.onrender.com` 
 
 ## Endpoints
 
