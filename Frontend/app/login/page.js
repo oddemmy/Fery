@@ -1,20 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "@/lib/api";
 import { setToken } from "@/lib/auth";
+import AuthShell from "@/components/auth/AuthShell";
+import { Field, PrimaryButton, ErrorNote } from "@/components/auth/ui";
 
 export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [status, setStatus] = useState("idle"); // idle | loading | error
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setStatus("loading");
+    setLoading(true);
     setError("");
 
     try {
@@ -25,74 +28,85 @@ export default function Login() {
       });
       const data = await res.json();
 
+      // Correct password, but the email hasn't been verified yet:
+      // send a fresh code and take them to the verify screen.
+      if (res.status === 403 && data.code === "EMAIL_NOT_VERIFIED") {
+        const target = data.email || email;
+        await fetch(`${API_BASE}/auth/resend-code`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: target }),
+        }).catch(() => {});
+        router.push(`/verify-email?email=${encodeURIComponent(target)}`);
+        return;
+      }
+
       if (!res.ok) {
         setError(data.error || "Invalid credentials.");
-        setStatus("error");
+        setLoading(false);
         return;
       }
 
       setToken(data.token);
       router.push("/");
-    } catch (err) {
+    } catch {
       setError("Couldn't reach the server. Is it running?");
-      setStatus("error");
+      setLoading(false);
     }
   }
 
   return (
-    <main className="min-h-screen bg-bg text-fg flex items-center justify-center px-6">
-      <div className="w-full max-w-[400px]">
-        <h1 className="font-sans font-black text-3xl tracking-tight mb-8">
-          Log in
-        </h1>
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-muted block mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border-b-2 border-line bg-transparent py-2 text-fg focus:border-accent transition-colors"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-muted block mb-2">
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border-b-2 border-line bg-transparent py-2 text-fg focus:border-accent transition-colors"
-            />
-          </div>
-
-          {status === "error" && (
-            <p className="text-sm text-red-400">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={status === "loading"}
-            className="mt-2 bg-accent text-bg px-6 py-3 text-sm font-semibold tracking-wide hover:bg-fg transition-colors disabled:opacity-50"
-          >
-            {status === "loading" ? "Logging in…" : "Log in"}
-          </button>
-        </form>
-
-        <p className="mt-6 text-sm text-muted">
-          Don't have an account?{" "}
-          <a href="/signup" className="text-accent hover:underline">
+    <AuthShell
+      title="Welcome back"
+      subtitle="Log in to manage your short links."
+      footer={
+        <>
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="text-accent hover:underline">
             Sign up
-          </a>
-        </p>
-      </div>
-    </main>
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <Field
+          id="email"
+          label="Email"
+          icon="mail"
+          type="email"
+          required
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <Field
+          id="password"
+          label="Password"
+          icon="lock"
+          type="password"
+          required
+          autoComplete="current-password"
+          placeholder="Your password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          labelRight={
+            <Link
+              href="/forgot-password"
+              className="text-xs text-accent hover:underline"
+            >
+              Forgot password?
+            </Link>
+          }
+        />
+
+        <ErrorNote>{error}</ErrorNote>
+
+        <PrimaryButton loading={loading} loadingText="Logging in…">
+          Log in
+        </PrimaryButton>
+      </form>
+    </AuthShell>
   );
 }

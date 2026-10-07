@@ -1,22 +1,42 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { API_BASE } from "@/lib/api";
-import { setToken } from "@/lib/auth";
+import AuthShell from "@/components/auth/AuthShell";
+import { Field, PrimaryButton, ErrorNote } from "@/components/auth/ui";
+
+function strength(pw) {
+  if (pw.length < 8) return 0;
+  let s = 1;
+  if (pw.length >= 12) s++;
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) s++;
+  if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) s++;
+  return s; // 0-4
+}
+
+const strengthLabels = ["Too short", "Weak", "Okay", "Good", "Strong"];
 
 export default function Signup() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [status, setStatus] = useState("idle"); // idle | loading | error
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const score = strength(password);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setStatus("loading");
     setError("");
 
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
+    setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/auth/signup`, {
         method: "POST",
@@ -27,89 +47,81 @@ export default function Signup() {
 
       if (!res.ok) {
         setError(data.error || "Something went wrong.");
-        setStatus("error");
+        setLoading(false);
         return;
       }
 
-      // Signup doesn't return a token itself, so log the new account in
-      // right away for a smoother flow, instead of making them re-type
-      // their password on a separate login page.
-      const loginRes = await fetch(`${API_BASE}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const loginData = await loginRes.json();
-
-      if (!loginRes.ok) {
-        // Account was created, but auto-login failed for some reason —
-        // send them to the login page instead of leaving them stuck.
-        router.push("/login");
-        return;
-      }
-
-      setToken(loginData.token);
-      router.push("/");
-    } catch (err) {
+      // A code has been emailed. They must verify before they can log in.
+      router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
+    } catch {
       setError("Couldn't reach the server. Is it running?");
-      setStatus("error");
+      setLoading(false);
     }
   }
 
   return (
-    <main className="min-h-screen bg-bg text-fg flex items-center justify-center px-6">
-      <div className="w-full max-w-[400px]">
-        <h1 className="font-sans font-black text-3xl tracking-tight mb-8">
-          Create an account
-        </h1>
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-muted block mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border-b-2 border-line bg-transparent py-2 text-fg focus:border-accent transition-colors"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-muted block mb-2">
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border-b-2 border-line bg-transparent py-2 text-fg focus:border-accent transition-colors"
-            />
-          </div>
-
-          {status === "error" && (
-            <p className="text-sm text-red-400">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={status === "loading"}
-            className="mt-2 bg-accent text-bg px-6 py-3 text-sm font-semibold tracking-wide hover:bg-fg transition-colors disabled:opacity-50"
-          >
-            {status === "loading" ? "Creating account…" : "Sign up"}
-          </button>
-        </form>
-
-        <p className="mt-6 text-sm text-muted">
+    <AuthShell
+      title="Create your account"
+      subtitle="Start shortening and tracking links in seconds."
+      footer={
+        <>
           Already have an account?{" "}
-          <a href="/login" className="text-accent hover:underline">
+          <Link href="/login" className="text-accent hover:underline">
             Log in
-          </a>
-        </p>
-      </div>
-    </main>
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <Field
+          id="email"
+          label="Email"
+          icon="mail"
+          type="email"
+          required
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <div>
+          <Field
+            id="password"
+            label="Password"
+            icon="lock"
+            type="password"
+            required
+            autoComplete="new-password"
+            placeholder="At least 8 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {password && (
+            <div className="mt-3">
+              <div className="flex gap-1.5">
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className={`h-1 flex-1 rounded-full transition-colors ${
+                      i < score ? "bg-accent" : "bg-line"
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="mt-1.5 text-xs text-muted">
+                {strengthLabels[score]}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <ErrorNote>{error}</ErrorNote>
+
+        <PrimaryButton loading={loading} loadingText="Creating account…">
+          Create account
+        </PrimaryButton>
+      </form>
+    </AuthShell>
   );
 }
