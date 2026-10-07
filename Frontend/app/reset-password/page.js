@@ -1,28 +1,27 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { API_BASE } from "@/lib/api";
 import AuthShell from "@/components/auth/AuthShell";
 import CodeInput from "@/components/auth/CodeInput";
-import { Field, PrimaryButton, ErrorNote, InfoNote } from "@/components/auth/ui";
+import { PrimaryButton, ErrorNote, InfoNote } from "@/components/auth/ui";
 
 const RESEND_SECONDS = 60;
 
-function ResetForm() {
+function CodeForm() {
   const router = useRouter();
   const params = useSearchParams();
   const email = params.get("email") || "";
 
   const [code, setCode] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
+  const [resetKey, setResetKey] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
   const [cooldown, setCooldown] = useState(RESEND_SECONDS);
+  const submitting = useRef(false);
 
   useEffect(() => {
     if (!email) router.replace("/forgot-password");
@@ -34,44 +33,37 @@ function ResetForm() {
     return () => clearTimeout(t);
   }, [cooldown]);
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function verify(value) {
+    if (submitting.current) return;
+    submitting.current = true;
+    setLoading(true);
     setError("");
     setInfo("");
 
-    if (code.length !== 6) {
-      setError("Enter the 6-digit code from your email.");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
-    }
-    if (password !== confirm) {
-      setError("Passwords don't match.");
-      return;
-    }
-
-    setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/auth/reset-password`, {
+      const res = await fetch(`${API_BASE}/auth/verify-reset-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code, newPassword: password }),
+        body: JSON.stringify({ email, code: value }),
       });
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Something went wrong.");
+        setError(data.error || "Invalid code.");
+        setCode("");
+        setResetKey((k) => k + 1);
         setLoading(false);
+        submitting.current = false;
         return;
       }
 
-      setDone(true);
-      setTimeout(() => router.push("/login"), 1500);
+      // Kept in sessionStorage (not the URL) so it doesn't end up in history or logs
+      sessionStorage.setItem("fery_reset_token", data.resetToken);
+      router.push("/new-password");
     } catch {
       setError("Couldn't reach the server. Is it running?");
       setLoading(false);
+      submitting.current = false;
     }
   }
 
@@ -86,65 +78,55 @@ function ResetForm() {
         body: JSON.stringify({ email }),
       });
       setCooldown(RESEND_SECONDS);
+      setCode("");
+      setResetKey((k) => k + 1);
       setInfo("A new code is on its way.");
     } catch {
       setError("Couldn't reach the server. Is it running?");
     }
   }
 
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (code.length === 6) verify(code);
+  }
+
   return (
     <AuthShell
-      title="Reset your password"
+      title="Enter your code"
       subtitle={
         <>
-          Enter the code we sent to{" "}
-          <span className="font-medium text-fg">{email}</span> and choose a new
-          password. The code expires in 15 minutes.
+          We sent a 6-digit code to{" "}
+          <span className="font-medium text-fg">{email}</span>. It expires in 15
+          minutes.
         </>
       }
       footer={
-        <Link href="/login" className="text-accent hover:underline">
-          Back to log in
-        </Link>
+        <>
+          Wrong email?{" "}
+          <Link href="/forgot-password" className="text-accent hover:underline">
+            Go back
+          </Link>
+        </>
       }
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        <CodeInput onChange={setCode} disabled={loading || done} />
-
-        <Field
-          id="new-password"
-          label="New password"
-          icon="lock"
-          type="password"
-          required
-          autoComplete="new-password"
-          placeholder="At least 8 characters"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        <Field
-          id="confirm-password"
-          label="Confirm password"
-          icon="lock"
-          type="password"
-          required
-          autoComplete="new-password"
-          placeholder="Repeat your new password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
+        <CodeInput
+          key={resetKey}
+          onChange={setCode}
+          onComplete={verify}
+          disabled={loading}
         />
 
         <ErrorNote>{error}</ErrorNote>
         <InfoNote>{info}</InfoNote>
-        {done && <InfoNote>Password updated. Taking you to log in…</InfoNote>}
 
         <PrimaryButton
           loading={loading}
-          loadingText="Updating…"
-          disabled={done}
+          loadingText="Checking…"
+          disabled={code.length !== 6}
         >
-          Update password
+          Continue
         </PrimaryButton>
 
         <p className="text-center text-sm text-muted">
@@ -169,7 +151,7 @@ function ResetForm() {
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={null}>
-      <ResetForm />
+      <CodeForm />
     </Suspense>
   );
 }
